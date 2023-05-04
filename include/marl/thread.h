@@ -25,7 +25,13 @@ namespace marl {
 // Thread provides an OS abstraction for threads of execution.
 class Thread {
  public:
+  using State = struct StartState;
   using Func = std::function<void()>;
+
+  // Thread start state.
+  struct MARL_EXPORT StartState {
+    virtual ~StartState() noexcept = default;
+  };
 
   // Core identifies a logical processor unit.
   // How a core is identified varies by platform.

@@ -375,11 +375,23 @@ void Scheduler::Worker::start() {
       auto allocator = scheduler->cfg.allocator;
       auto& affinityPolicy = scheduler->cfg.workerThread.affinityPolicy;
       auto affinity = affinityPolicy->get(id, allocator);
-      thread = Thread(std::move(affinity), [= CAPTURE_THIS] {
+      // Explicit this capture as = is deprecated since c++20.
+#if __cplusplus >= 202002L
+      thread = Thread(std::move(affinity), [=, this] {
+#else
+      thread = Thread(std::move(affinity), [=] {
+#endif
         Thread::setName("Thread<%.2d>", int(id));
 
         if (auto const& initFunc = scheduler->cfg.workerThread.initializer) {
           initFunc(id);
+        }
+
+        std::unique_ptr<Thread::StartState> startState;
+        if (auto const& initFunc =
+                scheduler->cfg.workerThread.statefulInitializer) {
+          // Store start state for thread.
+          startState = initFunc(id);
         }
 
         Scheduler::setBound(scheduler);

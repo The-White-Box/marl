@@ -31,6 +31,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <functional>
+#include <memory>
 #include <thread>
 
 namespace marl {
@@ -50,6 +51,8 @@ class Scheduler {
   using TimePoint = std::chrono::system_clock::time_point;
   using Predicate = std::function<bool()>;
   using ThreadInitializer = std::function<void(int workerId)>;
+  using StatefulThreadInitializer =
+      std::function<std::unique_ptr<Thread::StartState>(int workerId)>;
 
   // Config holds scheduler configuration settings that can be passed to the
   // Scheduler constructor.
@@ -64,6 +67,11 @@ class Scheduler {
       // Initializer function to call after thread creation and before any work
       // is run by the thread.
       ThreadInitializer initializer;
+
+      // Stateful initializer funciton to call after thread creation and before
+      // any work is run by the thread. State is moved to thread function to
+      // allow RAII with thread's lifetime.
+      StatefulThreadInitializer statefulInitializer;
 
       // Thread affinity policy to use for worker threads.
       std::shared_ptr<Thread::Affinity::Policy> affinityPolicy;
@@ -88,7 +96,9 @@ class Scheduler {
     MARL_NO_EXPORT inline Config& setFiberStackSize(size_t);
     MARL_NO_EXPORT inline Config& setWorkerThreadCount(int);
     MARL_NO_EXPORT inline Config& setWorkerThreadInitializer(
-        const ThreadInitializer&);
+        ThreadInitializer&&);
+    MARL_NO_EXPORT inline Config& setWorkerThreadStatefulInitializer(
+        StatefulThreadInitializer&&);
     MARL_NO_EXPORT inline Config& setWorkerThreadAffinityPolicy(
         const std::shared_ptr<Thread::Affinity::Policy>&);
   };
@@ -537,8 +547,14 @@ Scheduler::Config& Scheduler::Config::setWorkerThreadCount(int count) {
 }
 
 Scheduler::Config& Scheduler::Config::setWorkerThreadInitializer(
-    const ThreadInitializer& initializer) {
-  workerThread.initializer = initializer;
+    ThreadInitializer &&initializer) {
+  workerThread.initializer = std::move(initializer);
+  return *this;
+}
+
+Scheduler::Config& Scheduler::Config::setWorkerThreadStatefulInitializer(
+    StatefulThreadInitializer &&initializer) {
+  workerThread.statefulInitializer = std::move(initializer);
   return *this;
 }
 
