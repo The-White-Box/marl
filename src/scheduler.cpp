@@ -374,6 +374,13 @@ void Scheduler::Worker::start() {
           initFunc(id);
         }
 
+        std::unique_ptr<Thread::StartState> startState;
+        if (auto const& initFunc =
+                scheduler->cfg.workerThread.statefulInitializer) {
+          // Store start state for thread.
+          startState = std::move(initFunc(id));
+        }
+
         Scheduler::setBound(scheduler);
         Worker::current = this;
         mainFiber = Fiber::createFromCurrentThread(scheduler->cfg.allocator, 0);
