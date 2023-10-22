@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.5)
 
 include(cmake/parse_version.cmake)
 parse_version("${CMAKE_CURRENT_SOURCE_DIR}/CHANGES.md" MARL)
